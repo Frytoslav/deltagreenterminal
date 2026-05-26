@@ -1,61 +1,73 @@
 const STORAGE_KEY = "dg98-state-v1";
 const SESSION_KEY = "dg98-session-v1";
 
-const desktop = document.querySelector("#desktop");
-const taskbar = document.querySelector("#taskbar");
-const bootScreen = document.querySelector("#bootScreen");
-const loginScreen = document.querySelector("#loginScreen");
-const loginForm = document.querySelector("#loginForm");
-const loginName = document.querySelector("#loginName");
-const loginPassword = document.querySelector("#loginPassword");
-const loginError = document.querySelector("#loginError");
-const loginCancel = document.querySelector("#loginCancel");
-const startButton = document.querySelector("#startButton");
-const startMenu = document.querySelector("#startMenu");
-const taskButtons = document.querySelector("#taskButtons");
-const dialog = document.querySelector("#dialog");
-const dialogMessage = document.querySelector("#dialogMessage");
-const clock = document.querySelector("#clock");
-const soundButton = document.querySelector("#soundButton");
-const currentUserLabel = document.querySelector("#currentUserLabel");
-const logoutButton = document.querySelector("#logoutButton");
-const caseFileGrid = document.querySelector("#caseFileGrid");
-const fileList = document.querySelector("#fileList");
-const filePreview = document.querySelector("#filePreview");
-const terminalBody = document.querySelector("#terminalBody");
-const windows = [...document.querySelectorAll(".window")];
+const page = {
+  desktop: document.querySelector("#desktop"),
+  taskbar: document.querySelector("#taskbar"),
+  bootScreen: document.querySelector("#bootScreen"),
+  loginScreen: document.querySelector("#loginScreen"),
+  startButton: document.querySelector("#startButton"),
+  startMenu: document.querySelector("#startMenu"),
+  taskButtons: document.querySelector("#taskButtons"),
+  dialog: document.querySelector("#dialog"),
+  dialogMessage: document.querySelector("#dialogMessage"),
+  clock: document.querySelector("#clock"),
+  soundButton: document.querySelector("#soundButton"),
+  currentUserLabel: document.querySelector("#currentUserLabel"),
+  logoutButton: document.querySelector("#logoutButton"),
+  caseFileGrid: document.querySelector("#caseFileGrid"),
+  fileList: document.querySelector("#fileList"),
+  filePreview: document.querySelector("#filePreview"),
+  terminalBody: document.querySelector("#terminalBody"),
+  windows: [...document.querySelectorAll(".window")],
+};
 
-const userList = document.querySelector("#userList");
-const userForm = document.querySelector("#userForm");
-const userOriginalName = document.querySelector("#userOriginalName");
-const userName = document.querySelector("#userName");
-const userPassword = document.querySelector("#userPassword");
-const userDisplayName = document.querySelector("#userDisplayName");
-const userIsAdmin = document.querySelector("#userIsAdmin");
-const newUserButton = document.querySelector("#newUserButton");
-const deleteUserButton = document.querySelector("#deleteUserButton");
+const loginForm = {
+  form: document.querySelector("#loginForm"),
+  name: document.querySelector("#loginName"),
+  password: document.querySelector("#loginPassword"),
+  error: document.querySelector("#loginError"),
+  cancel: document.querySelector("#loginCancel"),
+};
 
-const adminUsers = document.querySelector("#adminUsers");
-const adminFiles = document.querySelector("#adminFiles");
-const adminFileList = document.querySelector("#adminFileList");
-const fileForm = document.querySelector("#fileForm");
-const fileId = document.querySelector("#fileId");
-const fileTitle = document.querySelector("#fileTitle");
-const fileOwner = document.querySelector("#fileOwner");
-const fileClass = document.querySelector("#fileClass");
-const fileContent = document.querySelector("#fileContent");
-const newFileButton = document.querySelector("#newFileButton");
-const deleteFileButton = document.querySelector("#deleteFileButton");
-const resetDemoData = document.querySelector("#resetDemoData");
+const userForm = {
+  form: document.querySelector("#userForm"),
+  originalName: document.querySelector("#userOriginalName"),
+  name: document.querySelector("#userName"),
+  password: document.querySelector("#userPassword"),
+  displayName: document.querySelector("#userDisplayName"),
+  isAdmin: document.querySelector("#userIsAdmin"),
+  newButton: document.querySelector("#newUserButton"),
+  deleteButton: document.querySelector("#deleteUserButton"),
+  list: document.querySelector("#userList"),
+};
 
-let topZ = 30;
-let soundEnabled = true;
+const fileForm = {
+  form: document.querySelector("#fileForm"),
+  id: document.querySelector("#fileId"),
+  title: document.querySelector("#fileTitle"),
+  owner: document.querySelector("#fileOwner"),
+  classification: document.querySelector("#fileClass"),
+  content: document.querySelector("#fileContent"),
+  newButton: document.querySelector("#newFileButton"),
+  deleteButton: document.querySelector("#deleteFileButton"),
+  list: document.querySelector("#adminFileList"),
+};
+
+const adminPanel = {
+  users: document.querySelector("#adminUsers"),
+  files: document.querySelector("#adminFiles"),
+  resetButton: document.querySelector("#resetDemoData"),
+};
+
+let appData = loadAppData();
+let loggedUser = findSavedSession();
+let highestWindowLayer = 30;
+let soundsAreEnabled = true;
 let audioContext;
-let startupPlayed = false;
-let state = loadState();
-let currentUser = getSessionUser();
+let startSoundPlayed = false;
 
-function defaultState() {
+function makeDemoData() {
   return {
     users: [
       { username: "admin", password: "admin", displayName: "Administrator", isAdmin: true },
@@ -63,7 +75,7 @@ function defaultState() {
     ],
     files: [
       {
-        id: createId(),
+        id: makeId(),
         title: "BRIEFING.TXT",
         owner: "all",
         classification: "GREEN",
@@ -71,7 +83,7 @@ function defaultState() {
           "OPERATION: LAST LIGHT\nLocation: rural Pennsylvania, 1998.\nThree disappearances, one impossible phone call, and a federal evidence room logged open at 03:17.",
       },
       {
-        id: createId(),
+        id: makeId(),
         title: "AUDIO_TAPE_041.LOG",
         owner: "admin",
         classification: "BLACK",
@@ -79,7 +91,7 @@ function defaultState() {
           "Transcript fragment:\n[00:03] Static.\n[00:08] A child says the agent's full legal name.\n[00:11] Recording ends before the tape does.",
       },
       {
-        id: createId(),
+        id: makeId(),
         title: "MOTEL_RECEIPT.DOC",
         owner: "agent",
         classification: "AMBER",
@@ -90,44 +102,55 @@ function defaultState() {
   };
 }
 
-function createId() {
+function makeId() {
   return `file-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) {
-    const seeded = defaultState();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-    return seeded;
+function loadAppData() {
+  const savedData = localStorage.getItem(STORAGE_KEY);
+
+  if (!savedData) {
+    return resetAppData();
   }
 
   try {
-    return JSON.parse(saved);
+    return JSON.parse(savedData);
   } catch {
-    const seeded = defaultState();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-    return seeded;
+    return resetAppData();
   }
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function resetAppData() {
+  const freshData = makeDemoData();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
+  return freshData;
 }
 
-function getSessionUser() {
+function saveAppData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+function findSavedSession() {
   const username = sessionStorage.getItem(SESSION_KEY);
-  return state.users.find((user) => user.username === username) || null;
+  return findUser(username);
 }
 
-function isAdmin() {
-  return Boolean(currentUser && currentUser.isAdmin);
+function findUser(username) {
+  return appData.users.find((user) => user.username === username) || null;
 }
 
-function visibleFiles() {
-  if (!currentUser) return [];
-  if (isAdmin()) return state.files;
-  return state.files.filter((file) => file.owner === "all" || file.owner === currentUser.username);
+function findFile(fileId) {
+  return appData.files.find((file) => file.id === fileId) || null;
+}
+
+function userIsAdmin() {
+  return Boolean(loggedUser && loggedUser.isAdmin);
+}
+
+function getVisibleFiles() {
+  if (!loggedUser) return [];
+  if (userIsAdmin()) return appData.files;
+  return appData.files.filter((file) => file.owner === "all" || file.owner === loggedUser.username);
 }
 
 function getAudioContext() {
@@ -138,162 +161,225 @@ function getAudioContext() {
   return audioContext;
 }
 
-function tone(frequency, duration, type = "square", gain = 0.04, delay = 0) {
-  if (!soundEnabled) return;
+function playTone(frequency, duration, type = "square", gain = 0.04, delay = 0) {
+  if (!soundsAreEnabled) return;
 
-  const ctx = getAudioContext();
-  const oscillator = ctx.createOscillator();
-  const volume = ctx.createGain();
-  const start = ctx.currentTime + delay;
+  const context = getAudioContext();
+  const oscillator = context.createOscillator();
+  const volume = context.createGain();
+  const startTime = context.currentTime + delay;
 
   oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, start);
-  volume.gain.setValueAtTime(gain, start);
-  volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  volume.gain.setValueAtTime(gain, startTime);
+  volume.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
   oscillator.connect(volume);
-  volume.connect(ctx.destination);
-  oscillator.start(start);
-  oscillator.stop(start + duration + 0.02);
+  volume.connect(context.destination);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration + 0.02);
 }
 
 function playSound(name) {
-  if (name === "open") {
-    tone(660, 0.055);
-    tone(880, 0.07, "square", 0.03, 0.055);
-  } else if (name === "close") {
-    tone(440, 0.08, "triangle", 0.035);
-    tone(220, 0.1, "triangle", 0.025, 0.06);
-  } else if (name === "error") {
-    tone(160, 0.12, "sawtooth", 0.06);
-    tone(120, 0.12, "sawtooth", 0.055, 0.13);
-  } else if (name === "start") {
-    tone(523, 0.09, "triangle", 0.035);
-    tone(659, 0.09, "triangle", 0.035, 0.09);
-    tone(784, 0.16, "triangle", 0.035, 0.18);
-  } else {
-    tone(720, 0.035, "square", 0.025);
-  }
+  const sounds = {
+    open: [
+      [660, 0.055],
+      [880, 0.07, "square", 0.03, 0.055],
+    ],
+    close: [
+      [440, 0.08, "triangle", 0.035],
+      [220, 0.1, "triangle", 0.025, 0.06],
+    ],
+    error: [
+      [160, 0.12, "sawtooth", 0.06],
+      [120, 0.12, "sawtooth", 0.055, 0.13],
+    ],
+    start: [
+      [523, 0.09, "triangle", 0.035],
+      [659, 0.09, "triangle", 0.035, 0.09],
+      [784, 0.16, "triangle", 0.035, 0.18],
+    ],
+    click: [[720, 0.035, "square", 0.025]],
+  };
+
+  sounds[name].forEach((tone) => playTone(...tone));
 }
 
-function unlockAudio() {
-  if (!soundEnabled || startupPlayed) return;
+function unlockSound() {
+  if (!soundsAreEnabled || startSoundPlayed) return;
 
-  const ctx = getAudioContext();
-  if (ctx.state === "suspended") {
-    ctx.resume();
+  const context = getAudioContext();
+  if (context.state === "suspended") {
+    context.resume();
   }
-  startupPlayed = true;
+
+  startSoundPlayed = true;
   playSound("start");
 }
 
-function activateWindow(win) {
-  if (!currentUser) return;
-  if (win.id === "admin" && !isAdmin()) {
-    showDialog("Access denied. Administrator privileges required.");
-    return;
+function showLogin() {
+  page.loginScreen.classList.remove("hidden");
+  page.desktop.classList.add("locked");
+  page.taskbar.classList.add("locked");
+  page.currentUserLabel.textContent = "No user";
+  showAdminControls(false);
+}
+
+function showDesktop() {
+  page.loginScreen.classList.add("hidden");
+  page.desktop.classList.remove("locked");
+  page.taskbar.classList.remove("locked");
+  page.currentUserLabel.textContent = loggedUser.displayName;
+  showAdminControls(userIsAdmin());
+}
+
+function showAdminControls(shouldShow) {
+  document.querySelectorAll(".admin-only").forEach((element) => {
+    element.classList.toggle("hidden", !shouldShow);
+  });
+}
+
+function refreshScreen() {
+  if (loggedUser) {
+    showDesktop();
+  } else {
+    showLogin();
   }
 
-  windows.forEach((item) => item.classList.remove("active"));
-  win.classList.remove("hidden");
-  win.classList.add("active");
-  win.style.zIndex = ++topZ;
-  updateTasks();
+  renderCaseFiles();
+  renderFileManager();
+  renderAdminPanel();
+  renderTerminal();
 }
 
-function openWindow(id) {
-  const win = document.getElementById(id);
-  if (!win) return;
-  activateWindow(win);
-  startMenu.classList.add("hidden");
-  startButton.classList.remove("active");
-  renderAll();
-  playSound("open");
-}
-
-function closeWindow(win) {
-  if (!win) return;
-  win.classList.add("hidden");
-  win.classList.remove("active");
-  playSound("close");
-  updateTasks();
-}
-
-function showDialog(message) {
-  dialogMessage.textContent = message;
-  dialog.classList.remove("hidden");
-  dialog.style.zIndex = ++topZ;
+function showMessage(message) {
+  page.dialogMessage.textContent = message;
+  page.dialog.classList.remove("hidden");
+  page.dialog.style.zIndex = ++highestWindowLayer;
   playSound("error");
 }
 
-function updateTasks() {
-  taskButtons.innerHTML = "";
-  windows
-    .filter((win) => !win.classList.contains("hidden"))
-    .forEach((win) => {
-      const button = document.createElement("button");
-      button.textContent = win.dataset.title;
-      button.className = win.classList.contains("active") ? "active" : "";
-      button.addEventListener("click", () => {
-        if (win.classList.contains("active")) {
-          win.classList.add("hidden");
-          win.classList.remove("active");
-        } else {
-          activateWindow(win);
-        }
-        updateTasks();
-        playSound("click");
-      });
-      taskButtons.append(button);
-    });
+function activateWindow(windowElement) {
+  if (!loggedUser) return;
+
+  if (windowElement.id === "admin" && !userIsAdmin()) {
+    showMessage("Access denied. Administrator privileges required.");
+    return;
+  }
+
+  page.windows.forEach((windowItem) => windowItem.classList.remove("active"));
+  windowElement.classList.remove("hidden");
+  windowElement.classList.add("active");
+  windowElement.style.zIndex = ++highestWindowLayer;
+  renderTaskbarButtons();
 }
 
-function maximizeWindow(win) {
-  if (win.dataset.maximized === "true") {
-    win.style.left = win.dataset.prevLeft;
-    win.style.top = win.dataset.prevTop;
-    win.style.width = win.dataset.prevWidth;
-    win.style.height = win.dataset.prevHeight;
-    win.dataset.maximized = "false";
+function openWindow(windowId) {
+  const windowElement = document.getElementById(windowId);
+  if (!windowElement) return;
+
+  activateWindow(windowElement);
+  closeStartMenu();
+  refreshScreen();
+  playSound("open");
+}
+
+function closeWindow(windowElement) {
+  if (!windowElement) return;
+
+  windowElement.classList.add("hidden");
+  windowElement.classList.remove("active");
+  playSound("close");
+  renderTaskbarButtons();
+}
+
+function minimizeWindow(windowElement) {
+  windowElement.classList.add("hidden");
+  windowElement.classList.remove("active");
+  playSound("click");
+  renderTaskbarButtons();
+}
+
+function toggleMaximizeWindow(windowElement) {
+  if (windowElement.dataset.maximized === "true") {
+    restoreWindowSize(windowElement);
   } else {
-    win.dataset.prevLeft = win.style.left;
-    win.dataset.prevTop = win.style.top;
-    win.dataset.prevWidth = win.style.width;
-    win.dataset.prevHeight = win.style.height;
-    win.style.left = "8px";
-    win.style.top = "8px";
-    win.style.width = "calc(100vw - 16px)";
-    win.style.height = "calc(100vh - 46px)";
-    win.dataset.maximized = "true";
+    maximizeWindow(windowElement);
   }
-  activateWindow(win);
+
+  activateWindow(windowElement);
   playSound("click");
 }
 
-function makeDraggable(win) {
-  const titleBar = win.querySelector(".title-bar");
-  let startX = 0;
-  let startY = 0;
-  let baseLeft = 0;
-  let baseTop = 0;
+function maximizeWindow(windowElement) {
+  windowElement.dataset.prevLeft = windowElement.style.left;
+  windowElement.dataset.prevTop = windowElement.style.top;
+  windowElement.dataset.prevWidth = windowElement.style.width;
+  windowElement.dataset.prevHeight = windowElement.style.height;
+  windowElement.style.left = "8px";
+  windowElement.style.top = "8px";
+  windowElement.style.width = "calc(100vw - 16px)";
+  windowElement.style.height = "calc(100vh - 46px)";
+  windowElement.dataset.maximized = "true";
+}
+
+function restoreWindowSize(windowElement) {
+  windowElement.style.left = windowElement.dataset.prevLeft;
+  windowElement.style.top = windowElement.dataset.prevTop;
+  windowElement.style.width = windowElement.dataset.prevWidth;
+  windowElement.style.height = windowElement.dataset.prevHeight;
+  windowElement.dataset.maximized = "false";
+}
+
+function renderTaskbarButtons() {
+  page.taskButtons.innerHTML = "";
+
+  getOpenWindows().forEach((windowElement) => {
+    const button = document.createElement("button");
+    button.textContent = windowElement.dataset.title;
+    button.className = windowElement.classList.contains("active") ? "active" : "";
+    button.addEventListener("click", () => toggleWindowFromTaskbar(windowElement));
+    page.taskButtons.append(button);
+  });
+}
+
+function getOpenWindows() {
+  return page.windows.filter((windowElement) => !windowElement.classList.contains("hidden"));
+}
+
+function toggleWindowFromTaskbar(windowElement) {
+  if (windowElement.classList.contains("active")) {
+    minimizeWindow(windowElement);
+  } else {
+    activateWindow(windowElement);
+    playSound("click");
+  }
+}
+
+function makeWindowDraggable(windowElement) {
+  const titleBar = windowElement.querySelector(".title-bar");
+  let mouseStartX = 0;
+  let mouseStartY = 0;
+  let windowStartLeft = 0;
+  let windowStartTop = 0;
 
   titleBar.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button") || win.dataset.maximized === "true") return;
+    if (event.target.closest("button") || windowElement.dataset.maximized === "true") return;
 
-    activateWindow(win);
-    startX = event.clientX;
-    startY = event.clientY;
-    baseLeft = win.offsetLeft;
-    baseTop = win.offsetTop;
+    activateWindow(windowElement);
+    mouseStartX = event.clientX;
+    mouseStartY = event.clientY;
+    windowStartLeft = windowElement.offsetLeft;
+    windowStartTop = windowElement.offsetTop;
     titleBar.setPointerCapture(event.pointerId);
   });
 
   titleBar.addEventListener("pointermove", (event) => {
     if (!titleBar.hasPointerCapture(event.pointerId)) return;
 
-    const nextLeft = Math.max(0, Math.min(window.innerWidth - 80, baseLeft + event.clientX - startX));
-    const nextTop = Math.max(0, Math.min(window.innerHeight - 58, baseTop + event.clientY - startY));
-    win.style.left = `${nextLeft}px`;
-    win.style.top = `${nextTop}px`;
+    const newLeft = windowStartLeft + event.clientX - mouseStartX;
+    const newTop = windowStartTop + event.clientY - mouseStartY;
+    windowElement.style.left = `${keepInsideScreen(newLeft, window.innerWidth - 80)}px`;
+    windowElement.style.top = `${keepInsideScreen(newTop, window.innerHeight - 58)}px`;
   });
 
   titleBar.addEventListener("pointerup", (event) => {
@@ -303,204 +389,361 @@ function makeDraggable(win) {
   });
 }
 
-function renderAll() {
-  renderSession();
-  renderCaseFiles();
-  renderFileManager();
-  renderAdmin();
-  renderTerminal();
-}
-
-function renderSession() {
-  const loggedIn = Boolean(currentUser);
-  loginScreen.classList.toggle("hidden", loggedIn);
-  desktop.classList.toggle("locked", !loggedIn);
-  taskbar.classList.toggle("locked", !loggedIn);
-  currentUserLabel.textContent = currentUser ? currentUser.displayName : "No user";
-  document.querySelectorAll(".admin-only").forEach((item) => {
-    item.classList.toggle("hidden", !isAdmin());
-  });
-}
-
-function renderTerminal() {
-  if (!currentUser) return;
-  terminalBody.innerHTML = `
-    <p>DELTA GREEN NETWORK NODE 7.13</p>
-    <p>C:\\DGNET&gt; whoami</p>
-    <p>${escapeHtml(currentUser.username)} (${isAdmin() ? "administrator" : "field user"})</p>
-    <p>C:\\DGNET&gt; status</p>
-    <p>Files visible: ${visibleFiles().length} | Users: ${isAdmin() ? state.users.length : "restricted"} | Threat index: amber</p>
-    <p>C:\\DGNET&gt; <span class="cursor">_</span></p>
-  `;
+function keepInsideScreen(value, maxValue) {
+  return Math.max(0, Math.min(maxValue, value));
 }
 
 function renderCaseFiles() {
-  caseFileGrid.innerHTML = "";
-  visibleFiles().forEach((file) => {
-    const button = document.createElement("button");
-    button.className = "file-card";
-    button.innerHTML = `
+  page.caseFileGrid.innerHTML = "";
+
+  getVisibleFiles().forEach((file) => {
+    const fileButton = document.createElement("button");
+    fileButton.className = "file-card";
+    fileButton.innerHTML = `
       <span class="icon-doc small"></span>
-      <strong>${escapeHtml(file.title)}</strong>
-      <small>${escapeHtml(file.classification)} | ${file.owner === "all" ? "All users" : escapeHtml(file.owner)}</small>
+      <strong>${safeText(file.title)}</strong>
+      <small>${safeText(file.classification)} | ${file.owner === "all" ? "All users" : safeText(file.owner)}</small>
     `;
-    button.addEventListener("click", () => openFile(file.id));
-    caseFileGrid.append(button);
+    fileButton.addEventListener("click", () => openFile(file.id));
+    page.caseFileGrid.append(fileButton);
   });
 }
 
 function renderFileManager() {
-  fileList.innerHTML = "";
-  const files = visibleFiles();
+  const files = getVisibleFiles();
+  page.fileList.innerHTML = "";
+  page.filePreview.value = "";
+
   if (!files.length) {
-    fileList.innerHTML = '<p class="empty-state">No files available.</p>';
-    filePreview.value = "";
+    page.fileList.innerHTML = '<p class="empty-state">No files available.</p>';
     return;
   }
 
-  files.forEach((file) => {
-    const button = document.createElement("button");
-    button.className = "file-row";
-    button.innerHTML = `<strong>${escapeHtml(file.title)}</strong><span>${escapeHtml(file.classification)}</span>`;
-    button.addEventListener("click", () => {
-      filePreview.value = file.content;
-      document.querySelectorAll(".file-row").forEach((row) => row.classList.remove("selected"));
-      button.classList.add("selected");
-    });
-    fileList.append(button);
+  files.forEach((file, index) => {
+    const button = makeFileListButton(file);
+    page.fileList.append(button);
+
+    if (index === 0) {
+      selectFileInManager(file, button);
+    }
   });
-  filePreview.value = files[0].content;
-  fileList.querySelector(".file-row").classList.add("selected");
 }
 
-function renderAdmin() {
-  if (!isAdmin()) return;
+function makeFileListButton(file) {
+  const button = document.createElement("button");
+  button.className = "file-row";
+  button.innerHTML = `<strong>${safeText(file.title)}</strong><span>${safeText(file.classification)}</span>`;
+  button.addEventListener("click", () => selectFileInManager(file, button));
+  return button;
+}
+
+function selectFileInManager(file, button) {
+  page.filePreview.value = file.content;
+  document.querySelectorAll(".file-row").forEach((row) => row.classList.remove("selected"));
+  button.classList.add("selected");
+}
+
+function renderAdminPanel() {
+  if (!userIsAdmin()) return;
+
   renderUserList();
   renderAdminFileList();
-  renderOwnerOptions();
+  renderFileOwnerOptions();
 }
 
 function renderUserList() {
-  userList.innerHTML = "";
-  state.users.forEach((user) => {
+  userForm.list.innerHTML = "";
+
+  appData.users.forEach((user) => {
     const button = document.createElement("button");
     button.className = "admin-row";
-    button.innerHTML = `<strong>${escapeHtml(user.username)}</strong><span>${user.isAdmin ? "Admin" : "User"}</span>`;
-    button.addEventListener("click", () => selectUser(user.username));
-    userList.append(button);
+    button.innerHTML = `<strong>${safeText(user.username)}</strong><span>${user.isAdmin ? "Admin" : "User"}</span>`;
+    button.addEventListener("click", () => fillUserForm(user.username));
+    userForm.list.append(button);
   });
 }
 
 function renderAdminFileList() {
-  adminFileList.innerHTML = "";
-  state.files.forEach((file) => {
+  fileForm.list.innerHTML = "";
+
+  appData.files.forEach((file) => {
     const button = document.createElement("button");
     button.className = "admin-row";
-    button.innerHTML = `<strong>${escapeHtml(file.title)}</strong><span>${escapeHtml(file.owner)} / ${escapeHtml(file.classification)}</span>`;
-    button.addEventListener("click", () => selectFile(file.id));
-    adminFileList.append(button);
+    button.innerHTML = `<strong>${safeText(file.title)}</strong><span>${safeText(file.owner)} / ${safeText(file.classification)}</span>`;
+    button.addEventListener("click", () => fillFileForm(file.id));
+    fileForm.list.append(button);
   });
 }
 
-function renderOwnerOptions() {
-  fileOwner.innerHTML = '<option value="all">All users</option>';
-  state.users.forEach((user) => {
+function renderFileOwnerOptions() {
+  fileForm.owner.innerHTML = '<option value="all">All users</option>';
+
+  appData.users.forEach((user) => {
     const option = document.createElement("option");
     option.value = user.username;
     option.textContent = user.displayName;
-    fileOwner.append(option);
+    fileForm.owner.append(option);
   });
 }
 
-function openFile(id) {
-  const file = visibleFiles().find((item) => item.id === id);
+function renderTerminal() {
+  if (!loggedUser) return;
+
+  page.terminalBody.innerHTML = `
+    <p>DELTA GREEN NETWORK NODE 7.13</p>
+    <p>C:\\DGNET&gt; whoami</p>
+    <p>${safeText(loggedUser.username)} (${userIsAdmin() ? "administrator" : "field user"})</p>
+    <p>C:\\DGNET&gt; status</p>
+    <p>Files visible: ${getVisibleFiles().length} | Users: ${userIsAdmin() ? appData.users.length : "restricted"} | Threat index: amber</p>
+    <p>C:\\DGNET&gt; <span class="cursor">_</span></p>
+  `;
+}
+
+function openFile(fileId) {
+  const file = getVisibleFiles().find((item) => item.id === fileId);
+
   if (!file) {
-    showDialog("File not found or access denied.");
+    showMessage("File not found or access denied.");
     return;
   }
 
   openWindow("files");
-  filePreview.value = file.content;
+  page.filePreview.value = file.content;
 }
 
-function selectUser(username) {
-  const user = state.users.find((item) => item.username === username);
+function fillUserForm(username) {
+  const user = findUser(username);
   if (!user) return;
-  userOriginalName.value = user.username;
-  userName.value = user.username;
-  userPassword.value = user.password;
-  userDisplayName.value = user.displayName;
-  userIsAdmin.checked = user.isAdmin;
+
+  userForm.originalName.value = user.username;
+  userForm.name.value = user.username;
+  userForm.password.value = user.password;
+  userForm.displayName.value = user.displayName;
+  userForm.isAdmin.checked = user.isAdmin;
 }
 
 function clearUserForm() {
-  userOriginalName.value = "";
-  userName.value = "";
-  userPassword.value = "";
-  userDisplayName.value = "";
-  userIsAdmin.checked = false;
-  userName.focus();
+  userForm.originalName.value = "";
+  userForm.name.value = "";
+  userForm.password.value = "";
+  userForm.displayName.value = "";
+  userForm.isAdmin.checked = false;
+  userForm.name.focus();
 }
 
-function selectFile(id) {
-  const file = state.files.find((item) => item.id === id);
+function saveUser(event) {
+  event.preventDefault();
+
+  const oldUsername = userForm.originalName.value;
+  const user = readUserForm();
+
+  if (!user.username || !user.password || !user.displayName) {
+    showMessage("User name, password and display name are required.");
+    return;
+  }
+
+  if (usernameAlreadyExists(user.username, oldUsername)) {
+    showMessage("This user name already exists.");
+    return;
+  }
+
+  if (oldUsername) {
+    updateUser(oldUsername, user);
+  } else {
+    appData.users.push(user);
+  }
+
+  saveAppData();
+  refreshScreen();
+  fillUserForm(user.username);
+  playSound("open");
+}
+
+function readUserForm() {
+  return {
+    username: userForm.name.value.trim(),
+    password: userForm.password.value,
+    displayName: userForm.displayName.value.trim(),
+    isAdmin: userForm.isAdmin.checked,
+  };
+}
+
+function usernameAlreadyExists(username, oldUsername) {
+  return appData.users.some((user) => user.username === username && user.username !== oldUsername);
+}
+
+function updateUser(oldUsername, newUser) {
+  const index = appData.users.findIndex((user) => user.username === oldUsername);
+  appData.users[index] = newUser;
+
+  appData.files.forEach((file) => {
+    if (file.owner === oldUsername) {
+      file.owner = newUser.username;
+    }
+  });
+
+  if (loggedUser.username === oldUsername) {
+    loggedUser = newUser;
+    sessionStorage.setItem(SESSION_KEY, newUser.username);
+  }
+}
+
+function deleteSelectedUser() {
+  const username = userForm.originalName.value;
+  if (!username) return;
+
+  if (username === loggedUser.username) {
+    showMessage("You cannot delete the logged-in user.");
+    return;
+  }
+
+  if (appData.users.length <= 1) {
+    showMessage("At least one user must remain.");
+    return;
+  }
+
+  appData.users = appData.users.filter((user) => user.username !== username);
+  appData.files.forEach((file) => {
+    if (file.owner === username) {
+      file.owner = "all";
+    }
+  });
+
+  saveAppData();
+  clearUserForm();
+  refreshScreen();
+  playSound("close");
+}
+
+function fillFileForm(fileId) {
+  const file = findFile(fileId);
   if (!file) return;
-  fileId.value = file.id;
-  fileTitle.value = file.title;
-  fileOwner.value = file.owner;
-  fileClass.value = file.classification;
-  fileContent.value = file.content;
+
+  fileForm.id.value = file.id;
+  fileForm.title.value = file.title;
+  fileForm.owner.value = file.owner;
+  fileForm.classification.value = file.classification;
+  fileForm.content.value = file.content;
 }
 
 function clearFileForm() {
-  fileId.value = "";
-  fileTitle.value = "";
-  fileOwner.value = "all";
-  fileClass.value = "GREEN";
-  fileContent.value = "";
-  fileTitle.focus();
+  fileForm.id.value = "";
+  fileForm.title.value = "";
+  fileForm.owner.value = "all";
+  fileForm.classification.value = "GREEN";
+  fileForm.content.value = "";
+  fileForm.title.focus();
 }
 
-function switchAdminTab(tab) {
-  adminUsers.classList.toggle("hidden", tab !== "users");
-  adminFiles.classList.toggle("hidden", tab !== "files");
+function saveFile(event) {
+  event.preventDefault();
+
+  const file = readFileForm();
+
+  if (!file.title || !file.content) {
+    showMessage("Title and content are required.");
+    return;
+  }
+
+  const index = appData.files.findIndex((savedFile) => savedFile.id === file.id);
+  if (index >= 0) {
+    appData.files[index] = file;
+  } else {
+    appData.files.push(file);
+  }
+
+  saveAppData();
+  refreshScreen();
+  fillFileForm(file.id);
+  playSound("open");
 }
 
-function login(username, password) {
-  const user = state.users.find((item) => item.username === username && item.password === password);
+function readFileForm() {
+  return {
+    id: fileForm.id.value || makeId(),
+    title: fileForm.title.value.trim(),
+    owner: fileForm.owner.value,
+    classification: fileForm.classification.value,
+    content: fileForm.content.value,
+  };
+}
+
+function deleteSelectedFile() {
+  if (!fileForm.id.value) return;
+
+  appData.files = appData.files.filter((file) => file.id !== fileForm.id.value);
+  saveAppData();
+  clearFileForm();
+  refreshScreen();
+  playSound("close");
+}
+
+function switchAdminTab(tabName) {
+  adminPanel.users.classList.toggle("hidden", tabName !== "users");
+  adminPanel.files.classList.toggle("hidden", tabName !== "files");
+}
+
+function logIn(username, password) {
+  const user = appData.users.find((savedUser) => savedUser.username === username && savedUser.password === password);
+
   if (!user) {
-    loginError.textContent = "Invalid user name or password.";
+    loginForm.error.textContent = "Invalid user name or password.";
     playSound("error");
     return;
   }
 
-  currentUser = user;
+  loggedUser = user;
   sessionStorage.setItem(SESSION_KEY, user.username);
-  loginError.textContent = "";
-  loginPassword.value = "";
-  renderAll();
+  loginForm.error.textContent = "";
+  loginForm.password.value = "";
+  refreshScreen();
   openWindow("casefiles");
   playSound("open");
 }
 
-function logout() {
+function logOut() {
   sessionStorage.removeItem(SESSION_KEY);
-  currentUser = null;
-  windows.forEach((win) => {
-    win.classList.add("hidden");
-    win.classList.remove("active");
-  });
-  startMenu.classList.add("hidden");
-  startButton.classList.remove("active");
-  updateTasks();
-  renderAll();
-  loginName.value = "admin";
-  loginPassword.value = "";
-  loginName.focus();
+  loggedUser = null;
+  closeAllWindows();
+  closeStartMenu();
+  renderTaskbarButtons();
+  refreshScreen();
+  loginForm.name.value = "admin";
+  loginForm.password.value = "";
+  loginForm.name.focus();
   playSound("close");
 }
 
-function escapeHtml(value) {
+function closeAllWindows() {
+  page.windows.forEach((windowElement) => {
+    windowElement.classList.add("hidden");
+    windowElement.classList.remove("active");
+  });
+}
+
+function closeStartMenu() {
+  page.startMenu.classList.add("hidden");
+  page.startButton.classList.remove("active");
+}
+
+function clearLoginForm() {
+  loginForm.name.value = "";
+  loginForm.password.value = "";
+  loginForm.error.textContent = "";
+  playSound("click");
+}
+
+function resetDemoState() {
+  appData = resetAppData();
+  loggedUser = findUser("admin");
+  sessionStorage.setItem(SESSION_KEY, loggedUser.username);
+  clearUserForm();
+  clearFileForm();
+  refreshScreen();
+  playSound("error");
+}
+
+function safeText(value) {
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
@@ -509,12 +752,12 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-document.addEventListener("click", (event) => {
-  unlockAudio();
+function handlePageClick(event) {
+  unlockSound();
 
   const openTarget = event.target.closest("[data-open]");
   const alertTarget = event.target.closest("[data-alert]");
-  const actionTarget = event.target.closest("[data-action]");
+  const windowActionTarget = event.target.closest("[data-action]");
   const adminTabTarget = event.target.closest("[data-admin-tab]");
   const adminOpenTabTarget = event.target.closest("[data-admin-open-tab]");
 
@@ -524,7 +767,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (alertTarget) {
-    showDialog(alertTarget.dataset.alert);
+    showMessage(alertTarget.dataset.alert);
     return;
   }
 
@@ -540,196 +783,87 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  if (actionTarget) {
-    const win = actionTarget.closest(".window");
-    const action = actionTarget.dataset.action;
-
-    if (action === "close") closeWindow(win);
-    if (action === "minimize") {
-      win.classList.add("hidden");
-      win.classList.remove("active");
-      playSound("click");
-      updateTasks();
-    }
-    if (action === "maximize") maximizeWindow(win);
+  if (windowActionTarget) {
+    runWindowAction(windowActionTarget);
   }
-});
+}
 
-loginForm.addEventListener("submit", (event) => {
+function runWindowAction(actionButton) {
+  const windowElement = actionButton.closest(".window");
+  const actionName = actionButton.dataset.action;
+
+  if (actionName === "close") closeWindow(windowElement);
+  if (actionName === "minimize") minimizeWindow(windowElement);
+  if (actionName === "maximize") toggleMaximizeWindow(windowElement);
+}
+
+function handleLoginSubmit(event) {
   event.preventDefault();
-  unlockAudio();
-  login(loginName.value.trim(), loginPassword.value);
-});
+  unlockSound();
+  logIn(loginForm.name.value.trim(), loginForm.password.value);
+}
 
-loginCancel.addEventListener("click", () => {
-  loginName.value = "";
-  loginPassword.value = "";
-  loginError.textContent = "";
+function toggleStartMenu() {
+  if (!loggedUser) return;
+
+  page.startMenu.classList.toggle("hidden");
+  page.startButton.classList.toggle("active");
   playSound("click");
-});
+}
 
-logoutButton.addEventListener("click", logout);
-
-userForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const original = userOriginalName.value;
-  const nextUser = {
-    username: userName.value.trim(),
-    password: userPassword.value,
-    displayName: userDisplayName.value.trim(),
-    isAdmin: userIsAdmin.checked,
-  };
-
-  if (!nextUser.username || !nextUser.password || !nextUser.displayName) {
-    showDialog("User name, password and display name are required.");
-    return;
-  }
-
-  const duplicate = state.users.some((user) => user.username === nextUser.username && user.username !== original);
-  if (duplicate) {
-    showDialog("This user name already exists.");
-    return;
-  }
-
-  if (original) {
-    const index = state.users.findIndex((user) => user.username === original);
-    state.users[index] = nextUser;
-    state.files.forEach((file) => {
-      if (file.owner === original) file.owner = nextUser.username;
-    });
-    if (currentUser.username === original) currentUser = nextUser;
-    sessionStorage.setItem(SESSION_KEY, currentUser.username);
-  } else {
-    state.users.push(nextUser);
-  }
-
-  saveState();
-  renderAll();
-  selectUser(nextUser.username);
-  playSound("open");
-});
-
-deleteUserButton.addEventListener("click", () => {
-  const username = userOriginalName.value;
-  if (!username) return;
-  if (username === currentUser.username) {
-    showDialog("You cannot delete the logged-in user.");
-    return;
-  }
-  if (state.users.length <= 1) {
-    showDialog("At least one user must remain.");
-    return;
-  }
-
-  state.users = state.users.filter((user) => user.username !== username);
-  state.files.forEach((file) => {
-    if (file.owner === username) file.owner = "all";
-  });
-  saveState();
-  clearUserForm();
-  renderAll();
-  playSound("close");
-});
-
-newUserButton.addEventListener("click", clearUserForm);
-
-fileForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const record = {
-    id: fileId.value || createId(),
-    title: fileTitle.value.trim(),
-    owner: fileOwner.value,
-    classification: fileClass.value,
-    content: fileContent.value,
-  };
-
-  if (!record.title || !record.content) {
-    showDialog("Title and content are required.");
-    return;
-  }
-
-  const index = state.files.findIndex((file) => file.id === record.id);
-  if (index >= 0) {
-    state.files[index] = record;
-  } else {
-    state.files.push(record);
-  }
-
-  saveState();
-  renderAll();
-  selectFile(record.id);
-  playSound("open");
-});
-
-deleteFileButton.addEventListener("click", () => {
-  if (!fileId.value) return;
-  state.files = state.files.filter((file) => file.id !== fileId.value);
-  saveState();
-  clearFileForm();
-  renderAll();
-  playSound("close");
-});
-
-newFileButton.addEventListener("click", clearFileForm);
-
-resetDemoData.addEventListener("click", () => {
-  state = defaultState();
-  saveState();
-  currentUser = state.users.find((user) => user.username === "admin");
-  sessionStorage.setItem(SESSION_KEY, currentUser.username);
-  clearUserForm();
-  clearFileForm();
-  renderAll();
-  playSound("error");
-});
-
-startButton.addEventListener("click", () => {
-  if (!currentUser) return;
-  startMenu.classList.toggle("hidden");
-  startButton.classList.toggle("active");
-  playSound("click");
-});
-
-desktop.addEventListener("pointerdown", () => {
-  startMenu.classList.add("hidden");
-  startButton.classList.remove("active");
-});
-
-windows.forEach((win) => {
-  win.addEventListener("pointerdown", () => activateWindow(win));
-  makeDraggable(win);
-});
-
-document.querySelectorAll("[data-dialog-close]").forEach((button) => {
-  button.addEventListener("click", () => {
-    dialog.classList.add("hidden");
-    playSound("click");
-  });
-});
-
-soundButton.addEventListener("click", () => {
-  soundEnabled = !soundEnabled;
-  soundButton.textContent = soundEnabled ? "♪" : "x";
-  if (soundEnabled) playSound("click");
-});
+function toggleSound() {
+  soundsAreEnabled = !soundsAreEnabled;
+  page.soundButton.textContent = soundsAreEnabled ? "♪" : "x";
+  if (soundsAreEnabled) playSound("click");
+}
 
 function updateClock() {
   const now = new Date();
-  clock.textContent = now.toLocaleTimeString("pl-PL", {
+  page.clock.textContent = now.toLocaleTimeString("pl-PL", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-window.addEventListener("load", () => {
+function startApp() {
   updateClock();
   setInterval(updateClock, 1000);
-  renderAll();
-  if (currentUser) {
+  refreshScreen();
+
+  if (loggedUser) {
     openWindow("casefiles");
   }
+
   setTimeout(() => {
-    bootScreen.classList.add("hidden");
-    if (!currentUser) loginName.focus();
+    page.bootScreen.classList.add("hidden");
+    if (!loggedUser) loginForm.name.focus();
   }, 1800);
+}
+
+document.addEventListener("click", handlePageClick);
+loginForm.form.addEventListener("submit", handleLoginSubmit);
+loginForm.cancel.addEventListener("click", clearLoginForm);
+page.logoutButton.addEventListener("click", logOut);
+userForm.form.addEventListener("submit", saveUser);
+userForm.deleteButton.addEventListener("click", deleteSelectedUser);
+userForm.newButton.addEventListener("click", clearUserForm);
+fileForm.form.addEventListener("submit", saveFile);
+fileForm.deleteButton.addEventListener("click", deleteSelectedFile);
+fileForm.newButton.addEventListener("click", clearFileForm);
+adminPanel.resetButton.addEventListener("click", resetDemoState);
+page.startButton.addEventListener("click", toggleStartMenu);
+page.desktop.addEventListener("pointerdown", closeStartMenu);
+page.soundButton.addEventListener("click", toggleSound);
+window.addEventListener("load", startApp);
+
+page.windows.forEach((windowElement) => {
+  windowElement.addEventListener("pointerdown", () => activateWindow(windowElement));
+  makeWindowDraggable(windowElement);
+});
+
+document.querySelectorAll("[data-dialog-close]").forEach((button) => {
+  button.addEventListener("click", () => {
+    page.dialog.classList.add("hidden");
+    playSound("click");
+  });
 });
