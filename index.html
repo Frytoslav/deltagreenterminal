@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Delta Green Terminal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="boot-screen" id="bootScreen">
+      <div class="boot-box">
+        <div class="boot-logo">Delta Green 98</div>
+        <div class="boot-copy">Restricted case workstation</div>
+        <div class="boot-progress"><span></span></div>
+      </div>
+    </div>
+
+    <section class="login-screen" id="loginScreen" aria-label="Logowanie">
+      <form class="login-window" id="loginForm">
+        <div class="title-bar">
+          <span>Log On to Delta Green Network</span>
+        </div>
+        <div class="login-body">
+          <div class="login-mark">DG</div>
+          <div class="login-fields">
+            <label>
+              User name
+              <input id="loginName" autocomplete="username" value="admin" />
+            </label>
+            <label>
+              Password
+              <input id="loginPassword" type="password" autocomplete="current-password" value="admin" />
+            </label>
+            <p class="login-hint">Default: admin / admin</p>
+            <p class="login-error" id="loginError"></p>
+          </div>
+        </div>
+        <div class="login-actions">
+          <button type="submit">OK</button>
+          <button type="button" id="loginCancel">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <main class="desktop locked" id="desktop" aria-label="Pulpit Delta Green 98">
+      <section class="desktop-icons" aria-label="Ikony pulpitu">
+        <button class="desktop-icon" data-open="casefiles">
+          <span class="icon-folder"></span>
+          <span>Case Files</span>
+        </button>
+        <button class="desktop-icon" data-open="mail">
+          <span class="icon-mail"></span>
+          <span>E-Mail</span>
+        </button>
+        <button class="desktop-icon" data-open="files">
+          <span class="icon-folder"></span>
+          <span>My Files</span>
+        </button>
+        <button class="desktop-icon admin-only hidden" data-open="admin">
+          <span class="icon-admin"></span>
+          <span>Admin Tools</span>
+        </button>
+        <button class="desktop-icon" data-open="terminal">
+          <span class="icon-terminal"></span>
+          <span>DG Console</span>
+        </button>
+        <button class="desktop-icon" data-open="briefing">
+          <span class="icon-doc"></span>
+          <span>Briefing.txt</span>
+        </button>
+        <button class="desktop-icon" data-open="evidence">
+          <span class="icon-drive"></span>
+          <span>Evidence (A:)</span>
+        </button>
+        <button class="desktop-icon" data-open="trash">
+          <span class="icon-trash"></span>
+          <span>Recycle Bin</span>
+        </button>
+      </section>
+
+      <article class="window active hidden" id="casefiles" data-title="Case Files" style="left: 210px; top: 70px; width: 520px">
+        <header class="title-bar">
+          <span>CASEFILES - CLASSIFIED</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="menu-bar">
+          <span>File</span><span>Edit</span><span>View</span><span>Tools</span><span>Help</span>
+        </div>
+        <div class="window-body file-grid" id="caseFileGrid"></div>
+      </article>
+
+      <article class="window hidden" id="files" data-title="My Files" style="left: 250px; top: 105px; width: 560px">
+        <header class="title-bar">
+          <span>My Files</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="menu-bar">
+          <button class="menu-command admin-only hidden" data-admin-open-tab="files">New File</button>
+          <span>View</span><span>Tools</span><span>Help</span>
+        </div>
+        <div class="window-body file-manager">
+          <div class="file-list" id="fileList"></div>
+          <textarea id="filePreview" readonly></textarea>
+        </div>
+      </article>
+
+      <article class="window hidden" id="admin" data-title="Admin Tools" style="left: 170px; top: 80px; width: 680px">
+        <header class="title-bar">
+          <span>User Manager - DGNET</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="menu-bar">
+          <button class="menu-command" data-admin-tab="users">Users</button>
+          <button class="menu-command" data-admin-tab="files">Files</button>
+          <button class="menu-command" id="resetDemoData">Reset Data</button>
+        </div>
+        <div class="window-body admin-body">
+          <section class="admin-panel" id="adminUsers">
+            <div class="admin-list" id="userList"></div>
+            <form class="admin-form" id="userForm">
+              <h3>User record</h3>
+              <input type="hidden" id="userOriginalName" />
+              <label>User name <input id="userName" required /></label>
+              <label>Password <input id="userPassword" required /></label>
+              <label>Display name <input id="userDisplayName" required /></label>
+              <label class="check-row"><input id="userIsAdmin" type="checkbox" /> Administrator</label>
+              <div class="form-actions">
+                <button type="submit">Save</button>
+                <button type="button" id="newUserButton">New</button>
+                <button type="button" id="deleteUserButton">Delete</button>
+              </div>
+            </form>
+          </section>
+          <section class="admin-panel hidden" id="adminFiles">
+            <div class="admin-list" id="adminFileList"></div>
+            <form class="admin-form" id="fileForm">
+              <h3>File record</h3>
+              <input type="hidden" id="fileId" />
+              <label>Title <input id="fileTitle" required /></label>
+              <label>Owner
+                <select id="fileOwner"></select>
+              </label>
+              <label>Classification
+                <select id="fileClass">
+                  <option>GREEN</option>
+                  <option>AMBER</option>
+                  <option>BLACK</option>
+                </select>
+              </label>
+              <label>Content <textarea id="fileContent" required></textarea></label>
+              <div class="form-actions">
+                <button type="submit">Save</button>
+                <button type="button" id="newFileButton">New</button>
+                <button type="button" id="deleteFileButton">Delete</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </article>
+
+      <article class="window hidden" id="mail" data-title="E-Mail" style="left: 280px; top: 115px; width: 500px">
+        <header class="title-bar">
+          <span>Outlook Express - delta.green.gov</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="menu-bar"><span>File</span><span>Edit</span><span>Send/Recv</span><span>Address</span></div>
+        <div class="window-body mail-layout">
+          <aside>
+            <button>Inbox (3)</button>
+            <button>Sent Items</button>
+            <button>Drafts</button>
+            <button>Deleted Items</button>
+          </aside>
+          <section>
+            <button class="mail-row selected">From: A-Cell | Subject: keep this offline</button>
+            <button class="mail-row">From: S. Kline | Subject: autopsy discrepancy</button>
+            <button class="mail-row">From: Unknown | Subject: you opened the door</button>
+            <div class="mail-preview">
+              <strong>Agents,</strong>
+              <p>Use this terminal only for in-session material. Anything marked BLACK goes to the handler first.</p>
+            </div>
+          </section>
+        </div>
+      </article>
+
+      <article class="window hidden" id="terminal" data-title="DG Console" style="left: 150px; top: 150px; width: 560px">
+        <header class="title-bar">
+          <span>MS-DOS Prompt - DGNET</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="window-body terminal-body" id="terminalBody"></div>
+      </article>
+
+      <article class="window hidden" id="briefing" data-title="Briefing.txt" style="left: 340px; top: 80px; width: 460px">
+        <header class="title-bar">
+          <span>Notepad - Briefing.txt</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="menu-bar"><span>File</span><span>Edit</span><span>Search</span><span>Help</span></div>
+        <div class="window-body notepad">
+          <p>OPERATION: LAST LIGHT</p>
+          <p>Location: rural Pennsylvania, 1998.</p>
+          <p>Brief: Three disappearances, one impossible phone call, and a federal evidence room that logged itself open at 03:17.</p>
+          <p>Keep civilians calm. Keep the Program out of the report.</p>
+        </div>
+      </article>
+
+      <article class="window hidden" id="evidence" data-title="Evidence (A:)" style="left: 430px; top: 165px; width: 390px">
+        <header class="title-bar">
+          <span>Evidence (A:)</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="window-body evidence-body">
+          <div class="disk-warning">Drive A: not ready</div>
+          <button data-alert="You hear a short mechanical grind. The diskette returns to the slot.">Retry</button>
+          <button data-action="close">Cancel</button>
+        </div>
+      </article>
+
+      <article class="window hidden" id="trash" data-title="Recycle Bin" style="left: 500px; top: 90px; width: 330px">
+        <header class="title-bar">
+          <span>Recycle Bin</span>
+          <div class="window-buttons">
+            <button data-action="minimize" aria-label="Minimalizuj">_</button>
+            <button data-action="maximize" aria-label="Maksymalizuj">□</button>
+            <button data-action="close" aria-label="Zamknij">x</button>
+          </div>
+        </header>
+        <div class="window-body trash-body">
+          <p>This folder is empty.</p>
+          <p class="faint">A torn evidence tag appears when nobody is looking.</p>
+        </div>
+      </article>
+    </main>
+
+    <div class="start-menu hidden" id="startMenu" aria-label="Menu Start">
+      <div class="start-brand">Delta Green 98</div>
+      <div class="start-items">
+        <button data-open="casefiles"><span class="icon-folder tiny"></span> Programs</button>
+        <button data-open="files"><span class="icon-folder tiny"></span> My Files</button>
+        <button class="admin-only hidden" data-open="admin"><span class="icon-admin tiny"></span> Admin Tools</button>
+        <button data-open="terminal"><span class="icon-terminal tiny"></span> MS-DOS Prompt</button>
+        <button data-alert="Connection refused by remote host."><span class="icon-drive tiny"></span> Network</button>
+        <hr />
+        <button id="logoutButton"><span class="icon-shutdown tiny"></span> Log Off...</button>
+        <button data-alert="It is not currently safe to shut down."><span class="icon-shutdown tiny"></span> Shut Down...</button>
+      </div>
+    </div>
+
+    <div class="dialog hidden" id="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="title-bar">
+        <span id="dialogTitle">Delta Green</span>
+        <div class="window-buttons">
+          <button data-dialog-close aria-label="Zamknij">x</button>
+        </div>
+      </div>
+      <div class="dialog-body">
+        <div class="dialog-icon">!</div>
+        <p id="dialogMessage">Access restricted.</p>
+      </div>
+      <div class="dialog-actions">
+        <button data-dialog-close>OK</button>
+      </div>
+    </div>
+
+    <footer class="taskbar locked" id="taskbar">
+      <button class="start-button" id="startButton"><span class="windows-mark"></span> Start</button>
+      <div class="task-buttons" id="taskButtons"></div>
+      <div class="tray">
+        <button class="tray-button" id="soundButton" aria-label="Przelacz dzwiek">♪</button>
+        <span id="currentUserLabel">No user</span>
+        <span id="clock">00:00</span>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
