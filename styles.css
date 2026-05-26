@@ -1,5 +1,8 @@
 :root {
   --teal: #008080;
+  --dg-green: #5bc266;
+  --dg-green-dark: #18351f;
+  --dg-black: #050706;
   --face: #c0c0c0;
   --light: #ffffff;
   --mid: #dfdfdf;
@@ -42,7 +45,9 @@ select {
   z-index: 1000;
   display: grid;
   place-items: center;
-  background: #050505;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(91, 194, 102, 0.13), transparent 28%),
+    #020302;
   color: #d9d9d9;
   transition: opacity 400ms ease, visibility 400ms ease;
 }
@@ -56,12 +61,12 @@ select {
   width: min(460px, calc(100vw - 32px));
   border: 2px solid #777;
   padding: 28px;
-  background: #111;
-  box-shadow: 0 0 0 1px #000, 0 0 24px rgba(28, 168, 146, 0.35);
+  background: #070907;
+  box-shadow: 0 0 0 1px #000, 0 0 28px rgba(91, 194, 102, 0.32);
 }
 
 .boot-logo {
-  color: #70d6c8;
+  color: var(--dg-green);
   font-size: 34px;
   font-weight: bold;
   letter-spacing: 0;
@@ -83,7 +88,7 @@ select {
   display: block;
   height: 100%;
   width: 0;
-  background: #70d6c8;
+  background: var(--dg-green);
   animation: boot 1.7s steps(18) forwards;
 }
 
@@ -94,8 +99,28 @@ select {
   display: grid;
   place-items: center;
   background:
-    linear-gradient(135deg, rgba(0, 0, 0, 0.18), transparent 42%),
-    #008080;
+    radial-gradient(circle at 50% 42%, rgba(91, 194, 102, 0.14), transparent 27%),
+    linear-gradient(135deg, rgba(91, 194, 102, 0.08), transparent 36%),
+    var(--dg-black);
+}
+
+.login-screen::before {
+  content: "";
+  position: absolute;
+  width: min(48vw, 380px);
+  aspect-ratio: 1;
+  background: rgba(91, 194, 102, 0.82);
+  clip-path: polygon(50% 4%, 96% 88%, 4% 88%);
+  filter: drop-shadow(0 0 16px rgba(91, 194, 102, 0.35));
+}
+
+.login-screen::after {
+  content: "";
+  position: absolute;
+  width: min(32vw, 252px);
+  aspect-ratio: 1;
+  background: var(--dg-black);
+  clip-path: polygon(50% 16%, 84% 78%, 16% 78%);
 }
 
 .login-screen.hidden {
@@ -108,6 +133,8 @@ select {
   border-color: var(--light) var(--black) var(--black) var(--light);
   background: var(--face);
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  position: relative;
+  z-index: 1;
 }
 
 .login-body {
@@ -118,17 +145,29 @@ select {
 }
 
 .login-mark {
-  display: grid;
-  place-items: center;
+  position: relative;
   width: 58px;
   height: 58px;
   border: 2px solid;
   border-color: var(--dark) var(--light) var(--light) var(--dark);
   background: #000;
-  color: #4cff74;
-  font-family: "Lucida Console", Consolas, monospace;
-  font-size: 20px;
-  font-weight: bold;
+  box-shadow: inset 0 0 14px rgba(91, 194, 102, 0.18);
+}
+
+.login-mark span {
+  position: absolute;
+  inset: 8px;
+  background: var(--dg-green);
+  clip-path: polygon(50% 0, 100% 92%, 0 92%);
+  filter: drop-shadow(0 0 4px rgba(91, 194, 102, 0.65));
+}
+
+.login-mark span::after {
+  content: "";
+  position: absolute;
+  inset: 11px 8px 7px;
+  background: #000;
+  clip-path: polygon(50% 0, 100% 92%, 0 92%);
 }
 
 .login-fields {
@@ -200,8 +239,36 @@ select {
   height: calc(100% - 30px);
   padding: 12px;
   background:
-    radial-gradient(circle at 78% 24%, rgba(0, 0, 0, 0.14), transparent 22%),
-    linear-gradient(135deg, #008080 0%, #017979 46%, #006868 100%);
+    radial-gradient(circle at 50% 45%, rgba(91, 194, 102, 0.12), transparent 31%),
+    linear-gradient(135deg, rgba(91, 194, 102, 0.08), transparent 34%),
+    #020302;
+}
+
+.wallpaper-logo {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: min(44vw, 430px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wallpaper-logo span {
+  position: absolute;
+  inset: 0;
+  background: rgba(91, 194, 102, 0.88);
+  clip-path: polygon(50% 2%, 97% 88%, 3% 88%);
+  filter: drop-shadow(0 0 18px rgba(91, 194, 102, 0.28));
+  opacity: 0.96;
+}
+
+.wallpaper-logo span::after {
+  content: "";
+  position: absolute;
+  inset: 15% 14% 18%;
+  background: #020302;
+  clip-path: polygon(50% 0, 100% 92%, 0 92%);
 }
 
 .desktop.locked {
@@ -214,7 +281,7 @@ select {
   position: absolute;
   right: 20px;
   bottom: 16px;
-  color: rgba(255, 255, 255, 0.16);
+  color: rgba(91, 194, 102, 0.22);
   font-size: 22px;
   font-weight: bold;
   pointer-events: none;
@@ -241,9 +308,9 @@ select {
 
 .desktop-icon:focus,
 .desktop-icon:hover {
-  border-color: rgba(255, 255, 255, 0.7);
-  background: rgba(0, 0, 128, 0.3);
-  outline: 1px dotted #fff;
+  border-color: rgba(91, 194, 102, 0.85);
+  background: rgba(91, 194, 102, 0.18);
+  outline: 1px dotted var(--dg-green);
 }
 
 .window,
