@@ -171,8 +171,8 @@ async function readData() {
 }
 
 function addMissingDemoMessages(messages, demoMessages) {
-  const existingSubjects = new Set(messages.map((message) => message.subject));
-  const missingMessages = demoMessages.filter((message) => !existingSubjects.has(message.subject));
+  const existingKeys = new Set(messages.map((message) => `${message.subject}:${message.to}`));
+  const missingMessages = demoMessages.filter((message) => !existingKeys.has(`${message.subject}:${message.to}`));
   return [...messages, ...missingMessages];
 }
 

@@ -163,8 +163,8 @@ function normalizeData(data) {
 }
 
 function addMissingDemoMessages(messages, demoMessages) {
-  const existingSubjects = new Set(messages.map((message) => message.subject));
-  const missingMessages = demoMessages.filter((message) => !existingSubjects.has(message.subject));
+  const existingKeys = new Set(messages.map((message) => `${message.subject}:${message.to}`));
+  const missingMessages = demoMessages.filter((message) => !existingKeys.has(`${message.subject}:${message.to}`));
   return [...messages, ...missingMessages];
 }
 
@@ -320,9 +320,10 @@ function App() {
 
   const visibleMessages = useMemo(() => {
     if (!user) return [];
+    if (isAdmin && messageFolder === "inbox") return data.messages;
     const field = messageFolder === "sent" ? "from" : "to";
     return data.messages.filter((message) => message[field] === user.username);
-  }, [data.messages, messageFolder, user]);
+  }, [data.messages, isAdmin, messageFolder, user]);
 
   useEffect(() => {
     if (!visibleMessages.some((message) => message.id === selectedMessageId)) {
@@ -632,6 +633,7 @@ function App() {
         <AppWindow id="mail" title="Outlook Express - delta.green.gov" state={windows.mail} active={activeWindow === "mail"} onActivate={setActiveWindow} onMove={moveWindow} onMinimize={minimizeWindow} onMaximize={maximizeWindow} onClose={closeWindow}>
           <MailWindow
             currentUser={user}
+            isAdmin={isAdmin}
             users={data.users}
             messages={visibleMessages}
             folder={messageFolder}
@@ -910,6 +912,7 @@ function FileEditor({ data, fileDraft, setFileDraft, saveFile, deleteFile }) {
 
 function MailWindow({
   currentUser,
+  isAdmin,
   users,
   messages,
   folder,
@@ -968,13 +971,14 @@ function MailWindow({
       </div>
       <div className="window-body mail-layout">
         <aside>
-          <button className={folder === "inbox" ? "selected-folder" : ""} onClick={() => setFolder("inbox")}>Inbox ({folder === "inbox" ? messages.length : ""})</button>
+          <button className={folder === "inbox" ? "selected-folder" : ""} onClick={() => setFolder("inbox")}>{isAdmin ? "All Mail" : "Inbox"} ({folder === "inbox" ? messages.length : ""})</button>
           <button className={folder === "sent" ? "selected-folder" : ""} onClick={() => setFolder("sent")}>Sent Items</button>
           <button>Drafts</button>
           <button>Deleted Items</button>
         </aside>
         <section className={`mail-content ${composeOpen ? "compose-open" : ""}`}>
           <div className="mail-message-list">
+            {isAdmin && folder === "inbox" && <p className="mail-note">Administrator view: all operational messages.</p>}
             {messages.length ? messages.map((message) => (
               <button
                 className={`mail-row ${selectedMessage?.id === message.id ? "selected" : ""}`}

@@ -587,6 +587,13 @@ select {
   min-height: 150px;
 }
 
+.mail-note {
+  margin: 0 0 6px;
+  padding: 4px;
+  border-bottom: 1px solid #999;
+  color: #555;
+}
+
 .mail-preview {
   min-height: 150px;
 }
