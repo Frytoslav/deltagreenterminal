@@ -176,6 +176,7 @@ function App() {
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [messageFolder, setMessageFolder] = useState("inbox");
   const [messageDraft, setMessageDraft] = useState(emptyMessageDraft());
+  const [composeOpen, setComposeOpen] = useState(false);
   const [userDraft, setUserDraft] = useState(emptyUserDraft());
   const [fileDraft, setFileDraft] = useState(emptyFileDraft());
   const sound = useSound();
@@ -459,6 +460,7 @@ function App() {
     setMessageDraft(emptyMessageDraft());
     setMessageFolder("sent");
     setSelectedMessageId(message.id);
+    setComposeOpen(false);
     sound.play("open");
   }
 
@@ -530,6 +532,8 @@ function App() {
             setSelectedMessageId={setSelectedMessageId}
             draft={messageDraft}
             setDraft={setMessageDraft}
+            composeOpen={composeOpen}
+            setComposeOpen={setComposeOpen}
             sendMessage={sendMessage}
             deleteMessage={deleteMessage}
             showDialog={showDialog}
@@ -806,6 +810,8 @@ function MailWindow({
   setSelectedMessageId,
   draft,
   setDraft,
+  composeOpen,
+  setComposeOpen,
   sendMessage,
   deleteMessage,
   showDialog,
@@ -834,12 +840,23 @@ function MailWindow({
     });
   }
 
+  function openComposer() {
+    setComposeOpen(true);
+    setDraft({ ...draft, to: draft.to || recipients[0]?.username || "" });
+  }
+
+  function closeComposer() {
+    setComposeOpen(false);
+    setDraft(emptyMessageDraft());
+  }
+
   return (
     <>
       <div className="menu-bar">
+        <button className="menu-command" onClick={openComposer}>New Message</button>
         <button className="menu-command" onClick={() => setFolder("inbox")}>Inbox</button>
         <button className="menu-command" onClick={() => setFolder("sent")}>Sent</button>
-        <span>Attach</span><span>Address</span>
+        <span>Address</span>
       </div>
       <div className="window-body mail-layout">
         <aside>
@@ -848,7 +865,7 @@ function MailWindow({
           <button>Drafts</button>
           <button>Deleted Items</button>
         </aside>
-        <section className="mail-content">
+        <section className={`mail-content ${composeOpen ? "compose-open" : ""}`}>
           <div className="mail-message-list">
             {messages.length ? messages.map((message) => (
               <button
@@ -874,31 +891,36 @@ function MailWindow({
               </>
             ) : <p>Select a message.</p>}
           </div>
-          <form className="mail-compose" onSubmit={sendMessage}>
-            <h3>New message</h3>
-            <label>To
-              <select value={draft.to} onChange={(event) => setDraft({ ...draft, to: event.target.value })}>
-                <option value="">Select recipient</option>
-                {recipients.map((recipient) => (
-                  <option key={recipient.username} value={recipient.username}>{recipient.displayName}</option>
-                ))}
-              </select>
-            </label>
-            <label>Subject
-              <input value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} />
-            </label>
-            <label>Message
-              <textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })}></textarea>
-            </label>
-            <label className="attachment-picker">Attachments / photos
-              <input type="file" multiple accept="image/*,.txt,.pdf,.doc,.docx,.zip" onChange={addAttachments} />
-            </label>
-            <AttachmentPreview attachments={draft.attachments} removable removeAttachment={removeAttachment} />
-            <div className="form-actions">
-              <button type="submit">Send</button>
-              <button type="button" onClick={() => setDraft(emptyMessageDraft())}>Clear</button>
-            </div>
-          </form>
+          {composeOpen && (
+            <form className="mail-compose" onSubmit={sendMessage}>
+              <div className="mail-compose-title">
+                <h3>New message</h3>
+                <button type="button" onClick={closeComposer}>x</button>
+              </div>
+              <label>To
+                <select value={draft.to} onChange={(event) => setDraft({ ...draft, to: event.target.value })}>
+                  <option value="">Select recipient</option>
+                  {recipients.map((recipient) => (
+                    <option key={recipient.username} value={recipient.username}>{recipient.displayName}</option>
+                  ))}
+                </select>
+              </label>
+              <label>Subject
+                <input value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} />
+              </label>
+              <label>Message
+                <textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })}></textarea>
+              </label>
+              <label className="attachment-picker">Attachments / photos
+                <input type="file" multiple accept="image/*,.txt,.pdf,.doc,.docx,.zip" onChange={addAttachments} />
+              </label>
+              <AttachmentPreview attachments={draft.attachments} removable removeAttachment={removeAttachment} />
+              <div className="form-actions">
+                <button type="submit">Send</button>
+                <button type="button" onClick={() => setDraft(emptyMessageDraft())}>Clear</button>
+              </div>
+            </form>
+          )}
         </section>
       </div>
     </>

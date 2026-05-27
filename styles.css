@@ -566,8 +566,12 @@ select {
 .mail-content {
   display: grid;
   grid-template-columns: minmax(180px, 0.8fr) minmax(240px, 1.2fr);
-  grid-template-rows: minmax(110px, 1fr) auto;
+  grid-template-rows: minmax(230px, 1fr);
   gap: 8px;
+}
+
+.mail-content.compose-open {
+  grid-template-rows: minmax(130px, 0.8fr) auto;
 }
 
 .mail-message-list,
@@ -598,15 +602,30 @@ select {
   background: #efefef;
 }
 
-.mail-compose h3,
+.mail-compose-title,
 .mail-compose .attachment-list,
 .mail-compose .form-actions {
   grid-column: 1 / -1;
 }
 
+.mail-compose-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .mail-compose h3 {
   margin: 0;
   font-size: 13px;
+}
+
+.mail-compose-title button {
+  width: 22px;
+  height: 22px;
+  border: 2px solid;
+  border-color: var(--light) var(--black) var(--black) var(--light);
+  background: var(--face);
+  line-height: 1;
 }
 
 .mail-compose label {
