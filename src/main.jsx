@@ -9,7 +9,7 @@ const defaultWindows = {
   casefiles: { title: "Case Files", left: 210, top: 70, width: 520, visible: false },
   files: { title: "My Files", left: 250, top: 105, width: 560, visible: false },
   admin: { title: "Admin Tools", left: 170, top: 80, width: 680, visible: false },
-  mail: { title: "E-Mail", left: 280, top: 115, width: 500, visible: false },
+  mail: { title: "E-Mail", left: 160, top: 90, width: 740, visible: false },
   terminal: { title: "DG Console", left: 150, top: 150, width: 560, visible: false },
   briefing: { title: "Briefing.txt", left: 340, top: 80, width: 460, visible: false },
   evidence: { title: "Evidence (A:)", left: 430, top: 165, width: 390, visible: false },
@@ -52,6 +52,26 @@ function makeDemoData() {
           "Room 12 paid cash. Guest signed as R. Wake.\nClerk insists the guest left before checking in.",
       },
     ],
+    messages: [
+      {
+        id: makeId(),
+        from: "admin",
+        to: "agent",
+        subject: "keep this offline",
+        body: "Use this terminal only for in-session material. Anything marked BLACK goes to the handler first.",
+        sentAt: new Date().toISOString(),
+        attachments: [],
+      },
+      {
+        id: makeId(),
+        from: "agent",
+        to: "admin",
+        subject: "autopsy discrepancy",
+        body: "The coroner report has been altered. Original note mentions a green triangular mark under the tongue.",
+        sentAt: new Date().toISOString(),
+        attachments: [],
+      },
+    ],
   };
 }
 
@@ -60,7 +80,8 @@ function loadData() {
   if (!savedData) return makeDemoData();
 
   try {
-    return JSON.parse(savedData);
+    const data = JSON.parse(savedData);
+    return { ...data, messages: data.messages || makeDemoData().messages };
   } catch {
     return makeDemoData();
   }
@@ -152,6 +173,9 @@ function App() {
   const [clock, setClock] = useState("");
   const [adminTab, setAdminTab] = useState("users");
   const [selectedFileId, setSelectedFileId] = useState(null);
+  const [selectedMessageId, setSelectedMessageId] = useState(null);
+  const [messageFolder, setMessageFolder] = useState("inbox");
+  const [messageDraft, setMessageDraft] = useState(emptyMessageDraft());
   const [userDraft, setUserDraft] = useState(emptyUserDraft());
   const [fileDraft, setFileDraft] = useState(emptyFileDraft());
   const sound = useSound();
@@ -184,6 +208,18 @@ function App() {
   useEffect(() => {
     if (!selectedFileId && visibleFiles.length) setSelectedFileId(visibleFiles[0].id);
   }, [selectedFileId, visibleFiles]);
+
+  const visibleMessages = useMemo(() => {
+    if (!user) return [];
+    const field = messageFolder === "sent" ? "from" : "to";
+    return data.messages.filter((message) => message[field] === user.username);
+  }, [data.messages, messageFolder, user]);
+
+  useEffect(() => {
+    if (!visibleMessages.some((message) => message.id === selectedMessageId)) {
+      setSelectedMessageId(visibleMessages[0]?.id || null);
+    }
+  }, [selectedMessageId, visibleMessages]);
 
   function openWindow(id) {
     if (id === "admin" && !isAdmin) {
@@ -334,7 +370,7 @@ function App() {
         sessionStorage.setItem(SESSION_KEY, updatedUser.username);
       }
 
-      return { users, files };
+      return { ...current, users, files };
     });
 
     sound.play("open");
@@ -354,8 +390,14 @@ function App() {
     }
 
     setData((current) => ({
+      ...current,
       users: current.users.filter((account) => account.username !== userDraft.originalName),
       files: current.files.map((file) => (file.owner === userDraft.originalName ? { ...file, owner: "all" } : file)),
+      messages: current.messages.map((message) => {
+        if (message.from === userDraft.originalName) return { ...message, from: "deleted-user" };
+        if (message.to === userDraft.originalName) return { ...message, to: "deleted-user" };
+        return message;
+      }),
     }));
     setUserDraft(emptyUserDraft());
     sound.play("close");
@@ -392,6 +434,42 @@ function App() {
     }));
     setFileDraft(emptyFileDraft());
     setSelectedFileId(null);
+    sound.play("close");
+  }
+
+  function sendMessage(event) {
+    event.preventDefault();
+
+    if (!messageDraft.to || !messageDraft.subject.trim() || !messageDraft.body.trim()) {
+      showDialog("Recipient, subject and message are required.");
+      return;
+    }
+
+    const message = {
+      id: makeId(),
+      from: user.username,
+      to: messageDraft.to,
+      subject: messageDraft.subject.trim(),
+      body: messageDraft.body.trim(),
+      sentAt: new Date().toISOString(),
+      attachments: messageDraft.attachments,
+    };
+
+    setData((current) => ({ ...current, messages: [message, ...current.messages] }));
+    setMessageDraft(emptyMessageDraft());
+    setMessageFolder("sent");
+    setSelectedMessageId(message.id);
+    sound.play("open");
+  }
+
+  function deleteMessage(messageId) {
+    if (!messageId) return;
+
+    setData((current) => ({
+      ...current,
+      messages: current.messages.filter((message) => message.id !== messageId),
+    }));
+    setSelectedMessageId(null);
     sound.play("close");
   }
 
@@ -442,7 +520,20 @@ function App() {
           />
         </AppWindow>
         <AppWindow id="mail" title="Outlook Express - delta.green.gov" state={windows.mail} active={activeWindow === "mail"} onActivate={setActiveWindow} onMove={moveWindow} onMinimize={minimizeWindow} onMaximize={maximizeWindow} onClose={closeWindow}>
-          <MailWindow />
+          <MailWindow
+            currentUser={user}
+            users={data.users}
+            messages={visibleMessages}
+            folder={messageFolder}
+            setFolder={setMessageFolder}
+            selectedMessageId={selectedMessageId}
+            setSelectedMessageId={setSelectedMessageId}
+            draft={messageDraft}
+            setDraft={setMessageDraft}
+            sendMessage={sendMessage}
+            deleteMessage={deleteMessage}
+            showDialog={showDialog}
+          />
         </AppWindow>
         <AppWindow id="terminal" title="MS-DOS Prompt - DGNET" state={windows.terminal} active={activeWindow === "terminal"} onActivate={setActiveWindow} onMove={moveWindow} onMinimize={minimizeWindow} onMaximize={maximizeWindow} onClose={closeWindow}>
           <Terminal user={user} isAdmin={isAdmin} filesCount={visibleFiles.length} usersCount={data.users.length} />
@@ -489,6 +580,10 @@ function emptyUserDraft() {
 
 function emptyFileDraft() {
   return { id: "", title: "", owner: "all", classification: "GREEN", content: "" };
+}
+
+function emptyMessageDraft() {
+  return { to: "", subject: "", body: "", attachments: [] };
 }
 
 function BootScreen() {
@@ -701,20 +796,150 @@ function FileEditor({ data, fileDraft, setFileDraft, saveFile, deleteFile }) {
   );
 }
 
-function MailWindow() {
+function MailWindow({
+  currentUser,
+  users,
+  messages,
+  folder,
+  setFolder,
+  selectedMessageId,
+  setSelectedMessageId,
+  draft,
+  setDraft,
+  sendMessage,
+  deleteMessage,
+  showDialog,
+}) {
+  const selectedMessage = messages.find((message) => message.id === selectedMessageId) || messages[0] || null;
+  const recipients = users.filter((user) => user.username !== currentUser.username);
+
+  async function addAttachments(event) {
+    const selectedFiles = [...event.target.files];
+    const filesToLarge = selectedFiles.filter((file) => file.size > 1500000);
+    const filesToRead = selectedFiles.filter((file) => file.size <= 1500000);
+
+    if (filesToLarge.length) {
+      showDialog("Some attachments were skipped. Maximum size is 1.5 MB per file.");
+    }
+
+    const attachments = await Promise.all(filesToRead.map(readAttachment));
+    setDraft({ ...draft, attachments: [...draft.attachments, ...attachments] });
+    event.target.value = "";
+  }
+
+  function removeAttachment(id) {
+    setDraft({
+      ...draft,
+      attachments: draft.attachments.filter((attachment) => attachment.id !== id),
+    });
+  }
+
   return (
     <>
-      <div className="menu-bar"><span>File</span><span>Edit</span><span>Send/Recv</span><span>Address</span></div>
+      <div className="menu-bar">
+        <button className="menu-command" onClick={() => setFolder("inbox")}>Inbox</button>
+        <button className="menu-command" onClick={() => setFolder("sent")}>Sent</button>
+        <span>Attach</span><span>Address</span>
+      </div>
       <div className="window-body mail-layout">
-        <aside><button>Inbox (3)</button><button>Sent Items</button><button>Drafts</button><button>Deleted Items</button></aside>
-        <section>
-          <button className="mail-row selected">From: A-Cell | Subject: keep this offline</button>
-          <button className="mail-row">From: S. Kline | Subject: autopsy discrepancy</button>
-          <button className="mail-row">From: Unknown | Subject: you opened the door</button>
-          <div className="mail-preview"><strong>Agents,</strong><p>Use this terminal only for in-session material. Anything marked BLACK goes to the handler first.</p></div>
+        <aside>
+          <button className={folder === "inbox" ? "selected-folder" : ""} onClick={() => setFolder("inbox")}>Inbox ({folder === "inbox" ? messages.length : ""})</button>
+          <button className={folder === "sent" ? "selected-folder" : ""} onClick={() => setFolder("sent")}>Sent Items</button>
+          <button>Drafts</button>
+          <button>Deleted Items</button>
+        </aside>
+        <section className="mail-content">
+          <div className="mail-message-list">
+            {messages.length ? messages.map((message) => (
+              <button
+                className={`mail-row ${selectedMessage?.id === message.id ? "selected" : ""}`}
+                key={message.id}
+                onClick={() => setSelectedMessageId(message.id)}
+              >
+                {folder === "sent" ? `To: ${message.to}` : `From: ${message.from}`} | Subject: {message.subject}
+                {message.attachments.length ? ` [${message.attachments.length}]` : ""}
+              </button>
+            )) : <p className="empty-state">No messages.</p>}
+          </div>
+          <div className="mail-preview">
+            {selectedMessage ? (
+              <>
+                <strong>{selectedMessage.subject}</strong>
+                <p>From: {selectedMessage.from} | To: {selectedMessage.to}</p>
+                <p>{selectedMessage.body}</p>
+                <AttachmentPreview attachments={selectedMessage.attachments} />
+                <div className="form-actions">
+                  <button type="button" onClick={() => deleteMessage(selectedMessage.id)}>Delete</button>
+                </div>
+              </>
+            ) : <p>Select a message.</p>}
+          </div>
+          <form className="mail-compose" onSubmit={sendMessage}>
+            <h3>New message</h3>
+            <label>To
+              <select value={draft.to} onChange={(event) => setDraft({ ...draft, to: event.target.value })}>
+                <option value="">Select recipient</option>
+                {recipients.map((recipient) => (
+                  <option key={recipient.username} value={recipient.username}>{recipient.displayName}</option>
+                ))}
+              </select>
+            </label>
+            <label>Subject
+              <input value={draft.subject} onChange={(event) => setDraft({ ...draft, subject: event.target.value })} />
+            </label>
+            <label>Message
+              <textarea value={draft.body} onChange={(event) => setDraft({ ...draft, body: event.target.value })}></textarea>
+            </label>
+            <label className="attachment-picker">Attachments / photos
+              <input type="file" multiple accept="image/*,.txt,.pdf,.doc,.docx,.zip" onChange={addAttachments} />
+            </label>
+            <AttachmentPreview attachments={draft.attachments} removable removeAttachment={removeAttachment} />
+            <div className="form-actions">
+              <button type="submit">Send</button>
+              <button type="button" onClick={() => setDraft(emptyMessageDraft())}>Clear</button>
+            </div>
+          </form>
         </section>
       </div>
     </>
+  );
+}
+
+function readAttachment(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        id: makeId(),
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        dataUrl: reader.result,
+      });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function AttachmentPreview({ attachments, removable = false, removeAttachment }) {
+  if (!attachments.length) return null;
+
+  return (
+    <div className="attachment-list">
+      {attachments.map((attachment) => (
+        <div className="attachment-item" key={attachment.id}>
+          {attachment.type.startsWith("image/") ? (
+            <img src={attachment.dataUrl} alt={attachment.name} />
+          ) : (
+            <span className="icon-doc small"></span>
+          )}
+          <a href={attachment.dataUrl} download={attachment.name}>{attachment.name}</a>
+          <small>{Math.ceil(attachment.size / 1024)} KB</small>
+          {removable && <button type="button" onClick={() => removeAttachment(attachment.id)}>x</button>}
+        </div>
+      ))}
+    </div>
   );
 }
 
