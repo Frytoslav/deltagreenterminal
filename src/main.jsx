@@ -87,6 +87,15 @@ function loadData() {
   }
 }
 
+function normalizeData(data) {
+  const fallback = makeDemoData();
+  return {
+    users: data.users || fallback.users,
+    files: data.files || fallback.files,
+    messages: data.messages || fallback.messages,
+  };
+}
+
 function useSound() {
   const [enabled, setEnabled] = useState(true);
   const contextRef = useRef(null);
@@ -161,6 +170,7 @@ function useSound() {
 function App() {
   const [bootVisible, setBootVisible] = useState(true);
   const [data, setData] = useState(loadData);
+  const [backendReady, setBackendReady] = useState(false);
   const [user, setUser] = useState(() => {
     const savedUser = sessionStorage.getItem(SESSION_KEY);
     return loadData().users.find((account) => account.username === savedUser) || null;
@@ -190,7 +200,33 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+    if (backendReady) {
+      fetch("/api/data", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).catch(() => setBackendReady(false));
+    }
   }, [data]);
+
+  useEffect(() => {
+    fetch("/api/data")
+      .then((response) => {
+        if (!response.ok) throw new Error("Backend unavailable");
+        return response.json();
+      })
+      .then((serverData) => {
+        const normalizedData = normalizeData(serverData);
+        setData(normalizedData);
+        setBackendReady(true);
+
+        const savedUser = sessionStorage.getItem(SESSION_KEY);
+        const refreshedUser = normalizedData.users.find((account) => account.username === savedUser);
+        if (refreshedUser) setUser(refreshedUser);
+      })
+      .catch(() => setBackendReady(false));
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
