@@ -1061,18 +1061,24 @@ function AttachmentPreview({ attachments, removable = false, removeAttachment })
 
   return (
     <div className="attachment-list">
-      {attachments.map((attachment) => (
-        <div className="attachment-item" key={attachment.id}>
-          {attachment.type.startsWith("image/") ? (
-            <img src={attachment.dataUrl} alt={attachment.name} />
-          ) : (
-            <span className="icon-doc small"></span>
-          )}
-          <a href={attachment.dataUrl} download={attachment.name}>{attachment.name}</a>
-          <small>{Math.ceil(attachment.size / 1024)} KB</small>
-          {removable && <button type="button" onClick={() => removeAttachment(attachment.id)}>x</button>}
-        </div>
-      ))}
+      {attachments.map((attachment) => {
+        const isImage = attachment.type.startsWith("image/");
+
+        return (
+          <div className={`attachment-item ${isImage ? "image-attachment" : ""}`} key={attachment.id}>
+            {isImage ? (
+              <img src={attachment.dataUrl} alt={attachment.name} />
+            ) : (
+              <span className="icon-doc small"></span>
+            )}
+            <div className="attachment-meta">
+              <a href={attachment.dataUrl} download={attachment.name}>{attachment.name}</a>
+              <small>{Math.ceil(attachment.size / 1024)} KB</small>
+            </div>
+            {removable && <button type="button" onClick={() => removeAttachment(attachment.id)}>x</button>}
+          </div>
+        );
+      })}
     </div>
   );
 }
