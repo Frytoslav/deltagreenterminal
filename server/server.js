@@ -10,6 +10,7 @@ const rootDir = path.resolve(__dirname, "..");
 const dataDir = path.join(__dirname, "data");
 const dataFile = path.join(dataDir, "data.json");
 const distDir = path.join(rootDir, "dist");
+const liveClients = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -201,6 +202,62 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
+function addLiveClient(username, response) {
+  if (!liveClients.has(username)) {
+    liveClients.set(username, new Set());
+  }
+
+  liveClients.get(username).add(response);
+}
+
+function removeLiveClient(username, response) {
+  liveClients.get(username)?.delete(response);
+
+  if (!liveClients.get(username)?.size) {
+    liveClients.delete(username);
+  }
+}
+
+function sendLiveEvent(username, eventName, payload) {
+  const clients = liveClients.get(username);
+  if (!clients) return;
+
+  const message = `event: ${eventName}\ndata: ${JSON.stringify(payload)}\n\n`;
+  clients.forEach((client) => client.write(message));
+}
+
+function broadcastNewMessages(oldData, newData) {
+  const existingIds = new Set((oldData.messages || []).map((message) => message.id));
+  const adminUsers = newData.users.filter((user) => user.isAdmin).map((user) => user.username);
+  const newMessages = (newData.messages || []).filter((message) => !existingIds.has(message.id));
+
+  newMessages.forEach((message) => {
+    const recipients = new Set([message.to, ...adminUsers]);
+    recipients.forEach((recipient) => sendLiveEvent(recipient, "message", message));
+  });
+}
+
+function handleLiveEvents(request, response) {
+  const url = new URL(request.url, `http://127.0.0.1:${PORT}`);
+  const username = url.searchParams.get("user");
+
+  if (!username) {
+    sendJson(response, 400, { error: "Missing user" });
+    return;
+  }
+
+  response.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+  });
+  response.write("event: ready\ndata: {}\n\n");
+
+  addLiveClient(username, response);
+  request.on("close", () => removeLiveClient(username, response));
+}
+
 async function handleApi(request, response) {
   if (request.method === "OPTIONS") {
     sendJson(response, 204, {});
@@ -213,10 +270,17 @@ async function handleApi(request, response) {
   }
 
   if (request.url === "/api/data" && request.method === "PUT") {
+    const oldData = await readData();
     const body = await readRequestBody(request);
     const data = JSON.parse(body);
     await saveData(data);
+    broadcastNewMessages(oldData, data);
     sendJson(response, 200, { ok: true });
+    return;
+  }
+
+  if (request.url.startsWith("/api/events") && request.method === "GET") {
+    handleLiveEvents(request, response);
     return;
   }
 

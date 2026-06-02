@@ -252,6 +252,7 @@ function App() {
   const [activeWindow, setActiveWindow] = useState(null);
   const [startOpen, setStartOpen] = useState(false);
   const [dialog, setDialog] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [clock, setClock] = useState("");
   const [adminTab, setAdminTab] = useState("users");
   const [selectedFileId, setSelectedFileId] = useState(null);
@@ -330,6 +331,24 @@ function App() {
       setSelectedMessageId(visibleMessages[0]?.id || null);
     }
   }, [selectedMessageId, visibleMessages]);
+
+  useEffect(() => {
+    if (!user || !backendReady || typeof EventSource === "undefined") return undefined;
+
+    const events = new EventSource(`/api/events?user=${encodeURIComponent(user.username)}`);
+
+    events.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data);
+      setData((current) => {
+        if (current.messages.some((savedMessage) => savedMessage.id === message.id)) return current;
+        return { ...current, messages: [message, ...current.messages] };
+      });
+      pushNotification(message);
+    });
+
+    events.onerror = () => setBackendReady(false);
+    return () => events.close();
+  }, [backendReady, user]);
 
   function openWindow(id) {
     if (id === "admin" && !isAdmin) {
@@ -428,6 +447,20 @@ function App() {
   function showDialog(message) {
     setDialog(message);
     sound.play("error");
+  }
+
+  function pushNotification(message) {
+    const notification = {
+      id: `${message.id}-${Date.now()}`,
+      title: "New mail received",
+      text: `${message.from}: ${message.subject}`,
+    };
+
+    setNotifications((current) => [notification, ...current].slice(0, 3));
+    sound.play("open");
+    setTimeout(() => {
+      setNotifications((current) => current.filter((item) => item.id !== notification.id));
+    }, 7000);
   }
 
   function resetData() {
@@ -671,6 +704,7 @@ function App() {
       </main>
       <StartMenu visible={startOpen} isAdmin={isAdmin} openWindow={openWindow} showDialog={showDialog} logOut={logOut} />
       {dialog && <Dialog message={dialog} close={() => setDialog(null)} />}
+      <NetworkNotifications notifications={notifications} dismiss={(id) => setNotifications((current) => current.filter((item) => item.id !== id))} />
       <Taskbar
         locked={!user}
         startOpen={startOpen}
@@ -1136,6 +1170,29 @@ function Dialog({ message, close }) {
       <div className="title-bar"><span id="dialogTitle">Delta Green</span><div className="window-buttons"><button onClick={close} aria-label="Zamknij">x</button></div></div>
       <div className="dialog-body"><div className="dialog-icon">!</div><p>{message}</p></div>
       <div className="dialog-actions"><button onClick={close}>OK</button></div>
+    </div>
+  );
+}
+
+function NetworkNotifications({ notifications, dismiss }) {
+  if (!notifications.length) return null;
+
+  return (
+    <div className="network-notifications" aria-live="polite">
+      {notifications.map((notification) => (
+        <div className="network-toast" key={notification.id}>
+          <div className="title-bar">
+            <span>{notification.title}</span>
+            <div className="window-buttons">
+              <button onClick={() => dismiss(notification.id)} aria-label="Zamknij">x</button>
+            </div>
+          </div>
+          <div className="network-toast-body">
+            <span className="icon-mail tiny"></span>
+            <p>{notification.text}</p>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

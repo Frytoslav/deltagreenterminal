@@ -954,6 +954,36 @@ select {
   height: 24px;
 }
 
+.network-notifications {
+  position: fixed;
+  right: 8px;
+  bottom: 36px;
+  z-index: 350;
+  display: grid;
+  gap: 6px;
+  width: min(330px, calc(100vw - 16px));
+}
+
+.network-toast {
+  border: 2px solid;
+  border-color: var(--light) var(--black) var(--black) var(--light);
+  background: var(--face);
+  box-shadow: 1px 1px 0 var(--dark);
+}
+
+.network-toast-body {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 9px;
+}
+
+.network-toast-body p {
+  margin: 0;
+  line-height: 1.3;
+}
+
 .icon-folder,
 .icon-mail,
 .icon-drive,
